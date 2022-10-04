@@ -9,6 +9,8 @@ use std::{fmt, io};
 
 use crate::io_source::IoSource;
 use crate::net::TcpStream;
+#[cfg(target_os = "wasi")]
+use crate::sys::tcp::bind;
 #[cfg(unix)]
 use crate::sys::tcp::set_reuseaddr;
 #[cfg(not(target_os = "wasi"))]
@@ -75,6 +77,20 @@ impl TcpListener {
 
         bind(&listener.inner, addr)?;
         listen(&listener.inner, 1024)?;
+        Ok(listener)
+    }
+
+    /// Convenience method to bind a new TCP listener to the specified address
+    /// to receive new connections.
+    ///
+    /// This function will take the following steps:
+    ///
+    /// 1. Call TCP bind by calling WASM runtime host function with reuse address and nonblocking enabled.
+    /// 2. Wrap the fd returned by host function into a TCP listener.
+    #[cfg(target_os = "wasi")]
+    pub fn bind(addr: SocketAddr) -> io::Result<TcpListener> {
+        let socket = bind(addr)?;
+        let listener = unsafe { TcpListener::from_raw_fd(socket) };
         Ok(listener)
     }
 

@@ -24,11 +24,37 @@ use std::time::Duration;
 use crate::{Interest, Token};
 
 cfg_net! {
-    pub(crate) mod tcp {
+    pub mod tcp {
         use std::io;
         use std::net::{self, SocketAddr};
+        use merak_evm_agent_wasm_sdk::socket::{RawFd, Socket, TcpBindOptions, TcpConnectOptions};
 
-        pub(crate) fn accept(listener: &net::TcpListener) -> io::Result<(net::TcpStream, SocketAddr)> {
+        pub fn bind(addr: SocketAddr) -> io::Result<RawFd> {
+            let addr_str = addr.to_string();
+            let bind_options = TcpBindOptions {
+                backlog: 1024,
+                nonblocking: true,
+                reuse_address: true,
+            };
+            let socket = Socket::tcp_bind(&addr_str, bind_options).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))?;
+            Ok(socket)
+        }
+
+        pub fn connect(addr: SocketAddr) -> io::Result<RawFd> {
+            let addr_str = addr.to_string();
+            let connect_options = TcpConnectOptions {
+                local_endpoint: match addr {
+                    SocketAddr::V4(_) => "0.0.0.0:0",
+                    SocketAddr::V6(_) => "[::]:0",
+                },
+                nonblocking: true,
+                connect_timeout_in_ms: 0,
+            };
+            let socket = Socket::tcp_connect(&addr_str, connect_options).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))?;
+            Ok(socket)
+        }
+
+        pub fn accept(listener: &net::TcpListener) -> io::Result<(net::TcpStream, SocketAddr)> {
             let (stream, addr) = listener.accept()?;
             stream.set_nonblocking(true)?;
             Ok((stream, addr))
@@ -40,7 +66,7 @@ cfg_net! {
 #[cfg(all(debug_assertions, feature = "net"))]
 static NEXT_ID: AtomicUsize = AtomicUsize::new(1);
 
-pub(crate) struct Selector {
+pub struct Selector {
     #[cfg(all(debug_assertions, feature = "net"))]
     id: usize,
     /// Subscriptions (reads events) we're interested in.
@@ -48,7 +74,7 @@ pub(crate) struct Selector {
 }
 
 impl Selector {
-    pub(crate) fn new() -> io::Result<Selector> {
+    pub fn new() -> io::Result<Selector> {
         Ok(Selector {
             #[cfg(all(debug_assertions, feature = "net"))]
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
@@ -57,11 +83,11 @@ impl Selector {
     }
 
     #[cfg(all(debug_assertions, feature = "net"))]
-    pub(crate) fn id(&self) -> usize {
+    pub fn id(&self) -> usize {
         self.id
     }
 
-    pub(crate) fn select(&self, events: &mut Events, timeout: Option<Duration>) -> io::Result<()> {
+    pub fn select(&self, events: &mut Events, timeout: Option<Duration>) -> io::Result<()> {
         events.clear();
 
         let mut subscriptions = self.subscriptions.lock().unwrap();
@@ -116,7 +142,7 @@ impl Selector {
         }
     }
 
-    pub(crate) fn try_clone(&self) -> io::Result<Selector> {
+    pub fn try_clone(&self) -> io::Result<Selector> {
         Ok(Selector {
             #[cfg(all(debug_assertions, feature = "net"))]
             id: self.id,
@@ -125,12 +151,7 @@ impl Selector {
     }
 
     #[cfg(feature = "net")]
-    pub(crate) fn register(
-        &self,
-        fd: wasi::Fd,
-        token: Token,
-        interests: Interest,
-    ) -> io::Result<()> {
+    pub fn register(&self, fd: wasi::Fd, token: Token, interests: Interest) -> io::Result<()> {
         let mut subscriptions = self.subscriptions.lock().unwrap();
 
         if interests.is_writable() {
@@ -167,18 +188,13 @@ impl Selector {
     }
 
     #[cfg(feature = "net")]
-    pub(crate) fn reregister(
-        &self,
-        fd: wasi::Fd,
-        token: Token,
-        interests: Interest,
-    ) -> io::Result<()> {
+    pub fn reregister(&self, fd: wasi::Fd, token: Token, interests: Interest) -> io::Result<()> {
         self.deregister(fd)
             .and_then(|()| self.register(fd, token, interests))
     }
 
     #[cfg(feature = "net")]
-    pub(crate) fn deregister(&self, fd: wasi::Fd) -> io::Result<()> {
+    pub fn deregister(&self, fd: wasi::Fd) -> io::Result<()> {
         let mut subscriptions = self.subscriptions.lock().unwrap();
 
         let predicate = |subscription: &wasi::Subscription| {
@@ -253,63 +269,63 @@ fn io_err(errno: wasi::Errno) -> io::Error {
     io::Error::from_raw_os_error(errno.raw() as i32)
 }
 
-pub(crate) type Events = Vec<Event>;
+pub type Events = Vec<Event>;
 
-pub(crate) type Event = wasi::Event;
+pub type Event = wasi::Event;
 
-pub(crate) mod event {
+pub mod event {
     use std::fmt;
 
     use crate::sys::Event;
     use crate::Token;
 
-    pub(crate) fn token(event: &Event) -> Token {
+    pub fn token(event: &Event) -> Token {
         Token(event.userdata as usize)
     }
 
-    pub(crate) fn is_readable(event: &Event) -> bool {
+    pub fn is_readable(event: &Event) -> bool {
         event.type_ == wasi::EVENTTYPE_FD_READ
     }
 
-    pub(crate) fn is_writable(event: &Event) -> bool {
+    pub fn is_writable(event: &Event) -> bool {
         event.type_ == wasi::EVENTTYPE_FD_WRITE
     }
 
-    pub(crate) fn is_error(_: &Event) -> bool {
+    pub fn is_error(_: &Event) -> bool {
         // Not supported? It could be that `wasi::Event.error` could be used for
         // this, but the docs say `error that occurred while processing the
         // subscription request`, so it's checked in `Select::select` already.
         false
     }
 
-    pub(crate) fn is_read_closed(event: &Event) -> bool {
+    pub fn is_read_closed(event: &Event) -> bool {
         event.type_ == wasi::EVENTTYPE_FD_READ
             // Safety: checked the type of the union above.
             && (event.fd_readwrite.flags & wasi::EVENTRWFLAGS_FD_READWRITE_HANGUP) != 0
     }
 
-    pub(crate) fn is_write_closed(event: &Event) -> bool {
+    pub fn is_write_closed(event: &Event) -> bool {
         event.type_ == wasi::EVENTTYPE_FD_WRITE
             // Safety: checked the type of the union above.
             && (event.fd_readwrite.flags & wasi::EVENTRWFLAGS_FD_READWRITE_HANGUP) != 0
     }
 
-    pub(crate) fn is_priority(_: &Event) -> bool {
+    pub fn is_priority(_: &Event) -> bool {
         // Not supported.
         false
     }
 
-    pub(crate) fn is_aio(_: &Event) -> bool {
+    pub fn is_aio(_: &Event) -> bool {
         // Not supported.
         false
     }
 
-    pub(crate) fn is_lio(_: &Event) -> bool {
+    pub fn is_lio(_: &Event) -> bool {
         // Not supported.
         false
     }
 
-    pub(crate) fn debug_details(f: &mut fmt::Formatter<'_>, event: &Event) -> fmt::Result {
+    pub fn debug_details(f: &mut fmt::Formatter<'_>, event: &Event) -> fmt::Result {
         debug_detail!(
             TypeDetails(wasi::Eventtype),
             PartialEq::eq,
@@ -350,14 +366,14 @@ pub(crate) mod event {
 
 cfg_os_poll! {
     cfg_io_source! {
-        pub(crate) struct IoSourceState;
+        pub struct IoSourceState;
 
         impl IoSourceState {
-            pub(crate) fn new() -> IoSourceState {
+            pub fn new() -> IoSourceState {
                 IoSourceState
             }
 
-            pub(crate) fn do_io<T, F, R>(&self, f: F, io: &T) -> io::Result<R>
+            pub fn do_io<T, F, R>(&self, f: F, io: &T) -> io::Result<R>
             where
                 F: FnOnce(&T) -> io::Result<R>,
             {

@@ -9,6 +9,8 @@ use std::os::wasi::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use std::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 
 use crate::io_source::IoSource;
+#[cfg(target_os = "wasi")]
+use crate::sys::tcp::connect;
 #[cfg(not(target_os = "wasi"))]
 use crate::sys::tcp::{connect, new_for_addr};
 use crate::{event, Interest, Registry, Token};
@@ -88,6 +90,17 @@ impl TcpStream {
         #[cfg(windows)]
         let stream = unsafe { TcpStream::from_raw_socket(socket as _) };
         connect(&stream.inner, addr)?;
+        Ok(stream)
+    }
+
+    /// Create a new TCP stream and issue a non-blocking connect to the
+    /// specified address.
+    ///
+    /// The behavior is very similar to the connect for non-wasi target.
+    #[cfg(target_os = "wasi")]
+    pub fn connect(addr: SocketAddr) -> io::Result<TcpStream> {
+        let socket = connect(addr)?;
+        let stream = unsafe { TcpStream::from_raw_fd(socket) };
         Ok(stream)
     }
 
