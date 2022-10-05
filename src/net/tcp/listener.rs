@@ -9,10 +9,10 @@ use std::{fmt, io};
 
 use crate::io_source::IoSource;
 use crate::net::TcpStream;
-#[cfg(target_os = "wasi")]
-use crate::sys::tcp::bind;
 #[cfg(unix)]
 use crate::sys::tcp::set_reuseaddr;
+#[cfg(target_os = "wasi")]
+use crate::sys::tcp::{bind, get_local_addr, get_ttl, set_ttl};
 #[cfg(not(target_os = "wasi"))]
 use crate::sys::tcp::{bind, listen, new_for_addr};
 use crate::{event, sys, Interest, Registry, Token};
@@ -121,16 +121,33 @@ impl TcpListener {
     }
 
     /// Returns the local socket address of this listener.
+    #[cfg(not(target_os = "wasi"))]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.inner.local_addr()
+    }
+
+    /// Returns the local socket address of this listener.
+    #[cfg(target_os = "wasi")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        get_local_addr(self.inner.as_raw_fd())
     }
 
     /// Sets the value for the `IP_TTL` option on this socket.
     ///
     /// This value sets the time-to-live field that is used in every packet sent
     /// from this socket.
+    #[cfg(not(target_os = "wasi"))]
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         self.inner.set_ttl(ttl)
+    }
+
+    /// Sets the value for the `IP_TTL` option on this socket.
+    ///
+    /// This value sets the time-to-live field that is used in every packet sent
+    /// from this socket.
+    #[cfg(target_os = "wasi")]
+    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        set_ttl(self.inner.as_raw_fd(), ttl)
     }
 
     /// Gets the value of the `IP_TTL` option for this socket.
@@ -138,8 +155,19 @@ impl TcpListener {
     /// For more information about this option, see [`set_ttl`][link].
     ///
     /// [link]: #method.set_ttl
+    #[cfg(not(target_os = "wasi"))]
     pub fn ttl(&self) -> io::Result<u32> {
         self.inner.ttl()
+    }
+
+    /// Gets the value of the `IP_TTL` option for this socket.
+    ///
+    /// For more information about this option, see [`set_ttl`][link].
+    ///
+    /// [link]: #method.set_ttl
+    #[cfg(target_os = "wasi")]
+    pub fn ttl(&self) -> io::Result<u32> {
+        get_ttl(self.inner.as_raw_fd())
     }
 
     /// Get the value of the `SO_ERROR` option on this socket.

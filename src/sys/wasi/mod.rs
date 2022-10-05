@@ -59,6 +59,36 @@ cfg_net! {
             stream.set_nonblocking(true)?;
             Ok((stream, addr))
         }
+
+        pub fn get_local_addr(raw_fd: RawFd) -> io::Result<SocketAddr> {
+            let local_addr_str = Socket::get_local_addr(raw_fd).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))?;
+            let local_addr = local_addr_str.parse().expect("Unexpected local address!");
+            Ok(local_addr)
+        }
+
+        pub fn get_peer_addr(raw_fd: RawFd) -> io::Result<SocketAddr> {
+            let peer_addr_str = Socket::get_peer_addr(raw_fd).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))?;
+            let peer_addr = peer_addr_str.parse().expect("Unexpected peer address!");
+            Ok(peer_addr)
+        }
+
+        pub fn get_ttl(raw_fd: RawFd) -> io::Result<u32> {
+            let ttl = Socket::get_ttl(raw_fd).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))?;
+            Ok(ttl)
+        }
+
+        pub fn set_ttl(raw_fd: RawFd, ttl: u32) -> io::Result<()> {
+            Socket::set_ttl(raw_fd, ttl).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))
+        }
+
+        pub fn get_nodelay(raw_fd: RawFd) -> io::Result<bool> {
+            let nodelay = Socket::get_nodelay(raw_fd).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))?;
+            Ok(nodelay)
+        }
+
+        pub fn set_nodelay(raw_fd: RawFd, nodelay: bool) -> io::Result<()> {
+            Socket::set_nodelay(raw_fd, nodelay).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))
+        }
     }
 }
 
