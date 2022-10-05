@@ -11,7 +11,7 @@ use std::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket}
 use crate::io_source::IoSource;
 #[cfg(target_os = "wasi")]
 use crate::sys::tcp::{
-    connect, get_local_addr, get_nodelay, get_peer_addr, get_ttl, set_nodelay, set_ttl,
+    connect, get_local_addr, get_nodelay, get_peer_addr, get_ttl, set_nodelay, set_ttl, shutdown,
 };
 #[cfg(not(target_os = "wasi"))]
 use crate::sys::tcp::{connect, new_for_addr};
@@ -153,8 +153,19 @@ impl TcpStream {
     /// This function will cause all pending and future I/O on the specified
     /// portions to return immediately with an appropriate value (see the
     /// documentation of `Shutdown`).
+    #[cfg(not(target_os = "wasi"))]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.inner.shutdown(how)
+    }
+
+    /// Shuts down the read, write, or both halves of this connection.
+    ///
+    /// This function will cause all pending and future I/O on the specified
+    /// portions to return immediately with an appropriate value (see the
+    /// documentation of `Shutdown`).
+    #[cfg(target_os = "wasi")]
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        shutdown(self.inner.as_raw_fd(), how)
     }
 
     /// Sets the value of the `TCP_NODELAY` option on this socket.

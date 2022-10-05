@@ -26,8 +26,8 @@ use crate::{Interest, Token};
 cfg_net! {
     pub mod tcp {
         use std::io;
-        use std::net::{self, SocketAddr};
-        use merak_evm_agent_wasm_sdk::socket::{RawFd, Socket, TcpBindOptions, TcpConnectOptions};
+        use std::net::{self, SocketAddr, Shutdown};
+        use merak_evm_agent_wasm_sdk::socket::{RawFd, Socket, TcpBindOptions, TcpConnectOptions, ShutdownOption};
 
         pub fn bind(addr: SocketAddr) -> io::Result<RawFd> {
             let addr_str = addr.to_string();
@@ -52,6 +52,16 @@ cfg_net! {
             };
             let socket = Socket::tcp_connect(&addr_str, connect_options).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))?;
             Ok(socket)
+        }
+
+        pub fn shutdown(raw_fd: RawFd, how: Shutdown) -> io::Result<()> {
+            let shutdown_option = match how {
+                Shutdown::Read => ShutdownOption::Read,
+                Shutdown::Write => ShutdownOption::Write,
+                Shutdown::Both => ShutdownOption::Both,
+            };
+
+            Socket::shutdown(raw_fd, shutdown_option).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))
         }
 
         pub fn accept(listener: &net::TcpListener) -> io::Result<(net::TcpStream, SocketAddr)> {
