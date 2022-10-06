@@ -49,6 +49,10 @@ cfg_net! {
                 },
                 nonblocking: true,
                 connect_timeout_in_ms: 0,
+                keep_alive_timeout_in_ms: 0,
+                reuse_address: false,
+                send_buffer_size: 0,
+                recv_buffer_size: 0,
             };
             let socket = Socket::tcp_connect(&addr_str, connect_options).map_err(|e| io::Error::new(io::ErrorKind::PermissionDenied, e.to_string()))?;
             Ok(socket)
