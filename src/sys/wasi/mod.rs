@@ -27,7 +27,7 @@ cfg_net! {
     pub mod tcp {
         use std::io;
         use std::net::{self, SocketAddr, Shutdown};
-        use merak_evm_agent_wasm_sdk::socket::{RawFd, Socket, TcpBindOptions, TcpConnectOptions, ShutdownOption};
+        use ingen_wasm_sdk::socket::{RawFd, Socket, TcpBindOptions, TcpConnectOptions, ShutdownOption};
 
         pub fn bind(addr: SocketAddr) -> io::Result<RawFd> {
             let addr_str = addr.to_string();
