@@ -125,27 +125,21 @@ impl TcpStream {
     }
 
     /// Returns the socket address of the remote peer of this TCP connection.
-    #[cfg(not(target_os = "wasi"))]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        self.inner.peer_addr()
-    }
+        #[cfg(not(target_os = "wasi"))]
+        return self.inner.peer_addr();
 
-    /// Returns the socket address of the remote peer of this TCP connection.
-    #[cfg(target_os = "wasi")]
-    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        get_peer_addr(self.inner.as_raw_fd())
+        #[cfg(target_os = "wasi")]
+        return get_peer_addr(self.inner.as_raw_fd());
     }
 
     /// Returns the socket address of the local half of this TCP connection.
-    #[cfg(not(target_os = "wasi"))]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        self.inner.local_addr()
-    }
+        #[cfg(not(target_os = "wasi"))]
+        return self.inner.local_addr();
 
-    /// Returns the socket address of the local half of this TCP connection.
-    #[cfg(target_os = "wasi")]
-    pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        get_local_addr(self.inner.as_raw_fd())
+        #[cfg(target_os = "wasi")]
+        return get_local_addr(self.inner.as_raw_fd());
     }
 
     /// Shuts down the read, write, or both halves of this connection.
@@ -153,19 +147,12 @@ impl TcpStream {
     /// This function will cause all pending and future I/O on the specified
     /// portions to return immediately with an appropriate value (see the
     /// documentation of `Shutdown`).
-    #[cfg(not(target_os = "wasi"))]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
-        self.inner.shutdown(how)
-    }
+        #[cfg(not(target_os = "wasi"))]
+        return self.inner.shutdown(how);
 
-    /// Shuts down the read, write, or both halves of this connection.
-    ///
-    /// This function will cause all pending and future I/O on the specified
-    /// portions to return immediately with an appropriate value (see the
-    /// documentation of `Shutdown`).
-    #[cfg(target_os = "wasi")]
-    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
-        shutdown(self.inner.as_raw_fd(), how)
+        #[cfg(target_os = "wasi")]
+        return shutdown(self.inner.as_raw_fd(), how);
     }
 
     /// Sets the value of the `TCP_NODELAY` option on this socket.
@@ -181,27 +168,12 @@ impl TcpStream {
     /// On Windows make sure the stream is connected before calling this method,
     /// by receiving an (writable) event. Trying to set `nodelay` on an
     /// unconnected `TcpStream` is unspecified behavior.
-    #[cfg(not(target_os = "wasi"))]
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        self.inner.set_nodelay(nodelay)
-    }
+        #[cfg(not(target_os = "wasi"))]
+        return self.inner.set_nodelay(nodelay);
 
-    /// Sets the value of the `TCP_NODELAY` option on this socket.
-    ///
-    /// If set, this option disables the Nagle algorithm. This means that
-    /// segments are always sent as soon as possible, even if there is only a
-    /// small amount of data. When not set, data is buffered until there is a
-    /// sufficient amount to send out, thereby avoiding the frequent sending of
-    /// small packets.
-    ///
-    /// # Notes
-    ///
-    /// On Windows make sure the stream is connected before calling this method,
-    /// by receiving an (writable) event. Trying to set `nodelay` on an
-    /// unconnected `TcpStream` is unspecified behavior.
-    #[cfg(target_os = "wasi")]
-    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        set_nodelay(self.inner.as_raw_fd(), nodelay)
+        #[cfg(target_os = "wasi")]
+        return set_nodelay(self.inner.as_raw_fd(), nodelay);
     }
 
     /// Gets the value of the `TCP_NODELAY` option on this socket.
@@ -215,25 +187,12 @@ impl TcpStream {
     /// On Windows make sure the stream is connected before calling this method,
     /// by receiving an (writable) event. Trying to get `nodelay` on an
     /// unconnected `TcpStream` is unspecified behavior.
-    #[cfg(not(target_os = "wasi"))]
     pub fn nodelay(&self) -> io::Result<bool> {
-        self.inner.nodelay()
-    }
+        #[cfg(not(target_os = "wasi"))]
+        return self.inner.nodelay();
 
-    /// Gets the value of the `TCP_NODELAY` option on this socket.
-    ///
-    /// For more information about this option, see [`set_nodelay`][link].
-    ///
-    /// [link]: #method.set_nodelay
-    ///
-    /// # Notes
-    ///
-    /// On Windows make sure the stream is connected before calling this method,
-    /// by receiving an (writable) event. Trying to get `nodelay` on an
-    /// unconnected `TcpStream` is unspecified behavior.
-    #[cfg(target_os = "wasi")]
-    pub fn nodelay(&self) -> io::Result<bool> {
-        get_nodelay(self.inner.as_raw_fd())
+        #[cfg(target_os = "wasi")]
+        return get_nodelay(self.inner.as_raw_fd());
     }
 
     /// Sets the value for the `IP_TTL` option on this socket.
@@ -246,24 +205,12 @@ impl TcpStream {
     /// On Windows make sure the stream is connected before calling this method,
     /// by receiving an (writable) event. Trying to set `ttl` on an
     /// unconnected `TcpStream` is unspecified behavior.
-    #[cfg(not(target_os = "wasi"))]
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        self.inner.set_ttl(ttl)
-    }
+        #[cfg(not(target_os = "wasi"))]
+        return self.inner.set_ttl(ttl);
 
-    /// Sets the value for the `IP_TTL` option on this socket.
-    ///
-    /// This value sets the time-to-live field that is used in every packet sent
-    /// from this socket.
-    ///
-    /// # Notes
-    ///
-    /// On Windows make sure the stream is connected before calling this method,
-    /// by receiving an (writable) event. Trying to set `ttl` on an
-    /// unconnected `TcpStream` is unspecified behavior.
-    #[cfg(target_os = "wasi")]
-    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        set_ttl(self.inner.as_raw_fd(), ttl)
+        #[cfg(target_os = "wasi")]
+        return set_ttl(self.inner.as_raw_fd(), ttl);
     }
 
     /// Gets the value of the `IP_TTL` option for this socket.
@@ -277,25 +224,12 @@ impl TcpStream {
     /// unconnected `TcpStream` is unspecified behavior.
     ///
     /// [link]: #method.set_ttl
-    #[cfg(not(target_os = "wasi"))]
     pub fn ttl(&self) -> io::Result<u32> {
-        self.inner.ttl()
-    }
+        #[cfg(not(target_os = "wasi"))]
+        return self.inner.ttl();
 
-    /// Gets the value of the `IP_TTL` option for this socket.
-    ///
-    /// For more information about this option, see [`set_ttl`][link].
-    ///
-    /// # Notes
-    ///
-    /// On Windows make sure the stream is connected before calling this method,
-    /// by receiving an (writable) event. Trying to get `ttl` on an
-    /// unconnected `TcpStream` is unspecified behavior.
-    ///
-    /// [link]: #method.set_ttl
-    #[cfg(target_os = "wasi")]
-    pub fn ttl(&self) -> io::Result<u32> {
-        get_ttl(self.inner.as_raw_fd())
+        #[cfg(target_os = "wasi")]
+        return get_ttl(self.inner.as_raw_fd());
     }
 
     /// Get the value of the `SO_ERROR` option on this socket.
@@ -304,7 +238,12 @@ impl TcpStream {
     /// the field in the process. This can be useful for checking errors between
     /// calls.
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        self.inner.take_error()
+        #[cfg(not(target_os = "wasi"))]
+        return self.inner.take_error();
+
+        // WASI doesn't support this call yet.
+        #[cfg(target_os = "wasi")]
+        return Ok(None);
     }
 
     /// Receives data on the socket from the remote address to which it is
