@@ -61,7 +61,7 @@ features = [
 [target.'cfg(target_os = "wasi")'.dependencies]
 wasi = "0.11.0"
 libc = "0.2.121"
-ingen-wasm-sdk = { git = "https://github.com/futurewei-cloud/merak-evm-agent-sdk", branch = "main" }
+ingen-wasm-sdk = { git = "https://github.com/futurewei-cloud/ingen-sdk", branch = "main" }
 
 [dev-dependencies]
 env_logger = { version = "0.8.4", default-features = false }
